@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Қазақстан Сауда Маршруты</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+  <style>
+    #map { height: 500px; margin-top: 20px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    label, select, button { margin: 5px 10px 10px 0; }
+  </style>
+</head>
+<body>
+
+<h2>Қазақстандағы сауда маршруты</h2>
+
+<!-- Бастапқы нүкте -->
+<h3>Бастапқы нүкте</h3>
+<label>Облыс:</label>
+<select id="startRegion" onchange="updateCities('start')">
+  <option value="">Таңдаңыз</option>
+</select>
+
+<label>Қала:</label>
+<select id="startCity"></select>
+
+<!-- Мақсатты нүкте -->
+<h3>Мақсатты нүкте</h3>
+<label>Облыс:</label>
+<select id="endRegion" onchange="updateCities('end')">
+  <option value="">Таңдаңыз</option>
+</select>
+
+<label>Қала:</label>
+<select id="endCity"></select>
+
+<br><br>
+<button onclick="drawRoute()">Маршрут салу</button>
+
+<div id="map"></div>
+<p id="distanceInfo"></p>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+<script>
+  const map = L.map('map').setView([48.0, 67.0], 5);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18
+  }).addTo(map);
+
+  let routingControl;
+
+  const cityData = {
+    "Алматы облысы": [
+      { name: "Алматы", coords: [43.238949, 76.889709] },
+      { name: "Талдықорған", coords: [45.0153, 78.3736] }
+    ],
+    "Астана қаласы": [
+      { name: "Астана", coords: [51.1605, 71.4704] }
+    ],
+    "Ақтөбе облысы": [
+      { name: "Ақтөбе", coords: [50.2839, 57.167] }
+    ],
+    "Қарағанды облысы": [
+      { name: "Қарағанды", coords: [49.802, 73.087] },
+      { name: "Теміртау", coords: [50.0549, 72.9646] }
+    ],
+    "Шымкент қаласы": [
+      { name: "Шымкент", coords: [42.3417, 69.5901] }
+    ],
+    "Түркістан облысы": [
+      { name: "Түркістан", coords: [43.2973, 68.2723] },
+      { name: "Кентау", coords: [43.5167, 68.5] }
+    ],
+    "Жамбыл облысы": [
+      { name: "Тараз", coords: [42.9, 71.3667] }
+    ],
+    "Павлодар облысы": [
+      { name: "Павлодар", coords: [52.2871, 76.9674] },
+      { name: "Екібастұз", coords: [51.7296, 75.3221] }
+    ],
+    "Солтүстік Қазақстан облысы": [
+      { name: "Петропавл", coords: [54.87, 69.15] }
+    ],
+    "Ақмола облысы": [
+      { name: "Көкшетау", coords: [53.2833, 69.3833] }
+    ],
+    "Атырау облысы": [
+      { name: "Атырау", coords: [47.1167, 51.8833] }
+    ],
+    "Батыс Қазақстан облысы": [
+      { name: "Орал", coords: [51.2333, 51.3667] }
+    ],
+    "Маңғыстау облысы": [
+      { name: "Ақтау", coords: [43.65, 51.1667] },
+      { name: "Жаңаөзен", coords: [43.3415, 52.8652] }
+    ],
+    "Қостанай облысы": [
+      { name: "Қостанай", coords: [53.2, 63.6333] }
+    ],
+    "Қызылорда облысы": [
+      { name: "Қызылорда", coords: [44.8333, 65.5] }
+    ],
+    "Ұлытау облысы": [
+      { name: "Жезқазған", coords: [47.8031, 67.7073] }
+    ],
+    "Абай облысы": [
+      { name: "Семей", coords: [50.4111, 80.2275] }
+    ],
+    "Жетісу облысы": [
+      { name: "Талдықорған", coords: [45.0153, 78.3736] }
+    ],
+    "Шығыс Қазақстан облысы": [
+      { name: "Өскемен", coords: [49.9481, 82.6286] }
+    ],
+    "Байқоңыр": [
+      { name: "Байқоңыр", coords: [45.6167, 63.3167] }
+    ]
+  };
+
+  function populateRegions() {
+    const startRegion = document.getElementById('startRegion');
+    const endRegion = document.getElementById('endRegion');
+    for (const region in cityData) {
+      const option1 = new Option(region, region);
+      const option2 = new Option(region, region);
+      startRegion.add(option1);
+      endRegion.add(option2);
+    }
+  }
+
+  function updateCities(type) {
+    const region = document.getElementById(type + 'Region').value;
+    const citySelect = document.getElementById(type + 'City');
+    citySelect.innerHTML = '';
+    if (cityData[region]) {
+      cityData[region].forEach(city => {
+        const option = new Option(city.name, JSON.stringify(city.coords));
+        citySelect.add(option);
+      });
+    }
+  }
+
+  function drawRoute() {
+    const startCoords = JSON.parse(document.getElementById('startCity').value);
+    const endCoords = JSON.parse(document.getElementById('endCity').value);
+
+    if (routingControl) map.removeControl(routingControl);
+
+    routingControl = L.Routing.control({
+      waypoints: [
+        L.latLng(startCoords[0], startCoords[1]),
+        L.latLng(endCoords[0], endCoords[1])
+      ],
+      routeWhileDragging: false
+    }).addTo(map);
+
+    routingControl.on('routesfound', function(e) {
+      const route = e.routes[0];
+      const distance = route.summary.totalDistance / 1000;
+      document.getElementById('distanceInfo').textContent =
+        `Маршрут ұзындығы: ${distance.toFixed(2)} км`;
+    });
+  }
+
+  populateRegions();
+</script>
+
+</body>
+</html>
